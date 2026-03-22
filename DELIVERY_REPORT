@@ -1,0 +1,79 @@
+JSON-Key-Sorter DELIVERY_REPORT
+
+Status: PASS
+
+Delivered files
+- server.py
+- README.md
+- DELIVERY_REPORT
+
+Self-tests executed
+1) Health route
+- Command: curl -s http://127.0.0.1:8000/health
+- Result: {"status":"ok"}
+- Status: PASS
+
+2) Informational routes
+- /privacy: No data is stored. The app is stateless.
+- /terms: Use as-is for deterministic JSON key sorting.
+- /support: Support: open a repository issue.
+- Status: PASS
+
+3) OpenAI challenge route
+- Command: curl -s http://127.0.0.1:8000/.well-known/openai-apps-challenge
+- Env used: OPENAI_APPS_CHALLENGE=test-token
+- Result: test-token
+- Status: PASS
+
+4) Manifest route
+- Command: curl -s http://127.0.0.1:8000/mcp
+- Verified fields: name, version, task, tools
+- Verified one tool definition: sort_json_keys
+- Status: PASS
+
+5) JSON-RPC MCP methods
+- initialize: returns protocolVersion + serverInfo
+- notifications/initialized: returns empty result object
+- tools/list: returns exact TOOL_DEFINITIONS
+- tools/call: returns content[] + structuredContent.sorted_json
+- Status: PASS
+
+6) Determinism
+- Input {"b":1,"a":2} -> {"a":2,"b":1}
+- Input {"z":{"b":1,"a":2},"a":3} -> {"a":3,"z":{"a":2,"b":1}}
+- Repeated calls return identical output
+- Status: PASS
+
+7) Error contract
+- Invalid input {"json":"hello"} returns structured error with code and message
+- No raw exceptions/stack traces returned to clients
+- Status: PASS
+
+8) Security headers
+- Content-Security-Policy
+- X-Content-Type-Options
+- X-Frame-Options
+- Referrer-Policy
+- Access-Control-Allow-Origin
+- Access-Control-Allow-Methods
+- Access-Control-Allow-Headers
+- Status: PASS
+
+9) Port binding
+- Uses PORT env var with default 8000
+- Status: PASS
+
+Assumptions
+- JSON-RPC method names are initialize, notifications/initialized, tools/list, tools/call.
+- JSON-RPC error object is returned in `{ "error": {"code", "message"} }` shape (with jsonrpc/id envelope for RPC calls).
+
+Limitations
+- Built on Python standard library `ThreadingHTTPServer`; suitable for deterministic task workloads and integration testing.
+- `OPENAI_APPS_CHALLENGE` must be set for non-empty challenge response.
+
+Compliance mapping
+- Sorting behavior preserved exactly in `_sort_json_keys` and `_extract_json_input`.
+- Added complete MCP interface (`GET /mcp`, `POST /mcp`) and challenge path.
+- Preserved `/health`, `/privacy`, `/terms`, `/support` and mandatory headers.
+- Implemented one shared response helper for all responses.
+- Service is stateless and does not use storage or cross-request memory.
